@@ -1,0 +1,31 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual env
+.venv/
+venv/
+env/
+
+# Logs
+*.log
+
+# Checkpoints / outputs
+outputs/
+checkpoints/
+runs/
+wandb/
+*.ckpt
+*.pt
+*.pth
+
+# VSCode / IDE
+.vscode/
+.idea/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+data/datasets/MultiTQ/questions/train.json
+data/datasets/MultiTQ/questions/dev.json
