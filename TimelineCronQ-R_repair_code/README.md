@@ -290,6 +290,12 @@ Its purpose is to:
 
 This stage changes surface presentation, not the temporal program, split assignment, or benchmark composition determined by Steps 1–4.
 
+#### Manual Quality Check after Step 5
+
+To further validate the effect of the constrained surface-form rewriting stage, we manually audited a stratified sample of 200 reconstructed QA instances across question levels. The audit checked whether the rewritten question preserved the original temporal intent, answer target, supporting events, temporal relation, and gold answer consistency.
+
+In the audited sample, we did not observe cases where the rewriting changed the underlying QA semantics, altered the temporal reasoning requirement, or introduced inconsistencies between the question, answer, and supporting events.
+
 ---
 
 ## 5. Relation to the Paper

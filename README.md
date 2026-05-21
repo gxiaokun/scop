@@ -53,14 +53,14 @@ SCoP/
 
 | Path | Description |
 |---|---|
-| `scop_main.py` | Main entry point for reproducing SCoP experiments |
+| `scop_main.py` | Main entry point for SCoP |
 | `timeline_baseline.py` | Entry point for TimelineCronQ-R baseline experiments |
 | `run_scop.sh` | Shell script for running SCoP and ablation experiments |
-| `run_timeline_baselines.sh` | Shell script for baseline reproduction |
+| `run_timeline_baselines.sh` | Shell script for TimelineCronQ-R baseline experiments |
 | `src/scop.py` | Main SCoP pipeline |
 | `src/constraint.py` | Temporal constraint parsing and execution |
 | `src/co_retriver.py` | Triple retrieval, alignment-related orchestration, and evidence preparation |
-| `src/llm/` | LLM prompts and structured parsing modules |
+| `src/llm/` | LLM prompts, few-shots and structured parsing modules |
 | `src/eval/` | Evaluation scripts for Hits@k and evidence-space analysis |
 | `src/utils/` | Graph construction, FAISS indexing, and utility functions |
 | `src/config/` | Configuration loading and model/runtime settings |
@@ -91,14 +91,7 @@ EXPERIMENT_OUTPUT_DIR=./test_run_results
 ```
 
 Required items are the chat model endpoint, API key, local embedding model path, dataset directory, artifact directory, and output directory.
-
 The embedding model is loaded with `local_files_only=True`; therefore `EMBED_MODEL_PATH` must point to a locally available SentenceTransformer-compatible model.
-
-Minimal Python dependencies inferred from the source include:
-
-```bash
-pip install openai instructor pydantic sentence-transformers faiss-cpu python-igraph numpy pandas tqdm
-```
 
 ---
 
@@ -156,7 +149,7 @@ BASE_STORE_DIR/<DATASET>/
 
 ---
 
-## 5. Reproducing Ablation Studies
+## 5. Ablation Studies
 
 Supported ablation modes:
 
@@ -187,13 +180,13 @@ bash run_scop.sh
 
 ---
 
-## 6. Reproducing TimelineCronQR Baselines
+## 6. TimelineCronQR Baselines
 
 The controlled baseline setting in the paper uses:
 
 - final evidence budget: `20`
 - pre-filter retrieval budget: `50`
-- iterative retrieval steps: `5`
+- max iterative retrieval steps: `5`
 
 ```bash
 TEST_SIZE=2080 \

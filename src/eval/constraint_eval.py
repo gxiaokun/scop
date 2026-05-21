@@ -25,10 +25,10 @@ Dataset-aware reporting policy:
 Printed reports:
 * Overall Evidence Compression — By Level
 * Overall Evidence Compression — By Qtype
-* Gold Answer Retention — By Level
-* Gold Answer Retention — By Qtype
-* Gold Event Retention — By Level
-* Gold Event Retention — By Qtype
+* Gold Answer Retention — By Level, only for datasets that support gold answer/event evaluation
+* Gold Answer Retention — By Qtype, only for datasets that support gold answer/event evaluation
+* Gold Event Retention — By Level, only for datasets that support gold answer/event evaluation
+* Gold Event Retention — By Qtype, only for datasets that support gold answer/event evaluation
 """
 
 import argparse
@@ -41,14 +41,10 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 import pandas as pd
 
-# from src.config.rag_config import TemporalDatasets
+from src.config.rag_config import TemporalDatasets
 
 
-# ============================================================
-# Basic utilities
-# ============================================================
 
-# Supports extracting either YYYY or YYYY-MM-DD.
 DATE_RE = re.compile(r"\d{4}(?:-\d{2}-\d{2})?")
 
 
@@ -131,17 +127,7 @@ def get_dataset_level_label(
     item: Dict[str, Any],
     dataset_name: Optional[str] = None,
 ) -> str:
-    """
-    Resolve the level label strictly according to the dataset schema.
 
-    Dataset-specific policy:
-      - MultiTQ uses `qlabel`.
-      - All other datasets use `question_level`.
-
-    No cross-field fallback is applied here. This keeps the schema contract explicit.
-    The returned value is still stored internally under the unified dataframe column
-    `question_level`, so downstream grouping logic remains dataset-agnostic.
-    """
     if is_multitq_dataset(dataset_name):
         return display_label(item.get("qlabel"))
     return display_label(item.get("question_level"))
@@ -299,21 +285,7 @@ def event_keys_match_allow_reverse(
     gold_event: Tuple[str, str, str, str],
     candidate_event: Tuple[str, str, str, str],
 ) -> bool:
-    """
-    Compare a gold event and a candidate event while preserving strict time equality.
 
-    Entity slots are allowed to match in either orientation:
-      - direct:  gold_head == cand_head and gold_tail == cand_tail
-      - reverse: gold_head == cand_tail and gold_tail == cand_head
-
-    This avoids false negatives caused by semantically equivalent inverse factual
-    formulations such as:
-      person -- award received --> award
-      award  -- winner         --> person
-
-    The time interval is still required to match exactly, so this relaxation only
-    addresses entity orientation and does not loosen temporal correctness.
-    """
     gold_head, gold_tail, gold_start, gold_end = gold_event
     cand_head, cand_tail, cand_start, cand_end = candidate_event
 
@@ -330,14 +302,7 @@ def gold_event_matches_search_fixed_slots(
     gold_event: Tuple[str, str, str, str],
     query_triple: List[str],
 ) -> bool:
-    """
-    Determine whether a gold event belongs to the target query triple.
 
-    The original fixed-slot logic is preserved, and reverse head/tail orientation
-    is additionally accepted when the query triple and gold event express the same
-    fact in opposite directions. This is needed because event supervision and
-    retrieval candidates may use inverse but semantically equivalent formulations.
-    """
     gold_head, gold_tail, _, _ = gold_event
     query_head, _, query_tail = query_triple
 
@@ -364,17 +329,7 @@ def gold_event_matches_search_fixed_slots(
 
 
 def get_gold_answers(item: Dict[str, Any]) -> Optional[List[Any]]:
-    """
-    Resolve gold-answer fields across dataset schemas.
 
-    Supported schema variants:
-      - `answer`
-      - `answers`
-
-    The first non-empty list found in this order is returned. This preserves the
-    historical preference for `answer` while enabling datasets such as MultiTQ
-    that store gold answers under `answers`.
-    """
     answers = item.get("answer")
     if isinstance(answers, list) and len(answers) > 0:
         return answers
@@ -387,21 +342,7 @@ def get_gold_answers(item: Dict[str, Any]) -> Optional[List[Any]]:
 
 
 def format_gold_answer(ans_str: str) -> Optional[str]:
-    """
-    Normalize a gold answer for final graph-based Gold Answer Coverage.
 
-    The denominator intentionally excludes answer forms that are not expected to
-    be directly retained as answerable graph evidence in the final candidate pool:
-      1. Pure numeric answers, including year-only strings such as "1978".
-      2. Duration answers such as "1096 days".
-
-    These answer types are computational or aggregate outputs. They are not direct
-    entity or interval strings that should necessarily appear verbatim in retrieved
-    candidate facts. Therefore they are excluded from the coverage denominator.
-
-    If every gold answer of a sample is excluded by this rule, that sample remains
-    `answer_evaluable=False` and does not contribute to Gold Answer Coverage tables.
-    """
     ans_str = ans_str.strip().lower()
 
     # Exclude numeric-only answers from the graph-based coverage denominator.
@@ -701,6 +642,7 @@ def compute_final_gold_event_retention(
 def build_dataframe(
     data: List[Dict[str, Any]],
     dataset_name: Optional[str] = None,
+    compute_gold_metrics: bool = True,
 ) -> pd.DataFrame:
     rows: List[Dict[str, Any]] = []
 
@@ -721,9 +663,6 @@ def build_dataframe(
                 1.0 - final_value / initial_value
             ) * 100.0
 
-        ans_cov = compute_final_answer_coverage(item, branch)
-        evt_ret = compute_final_gold_event_retention(item, branch)
-
         row = {
             "id": item.get("id", item.get("quid")),
             "question_level": get_dataset_level_label(item, dataset_name=dataset_name),
@@ -737,8 +676,10 @@ def build_dataframe(
             "sample_reduction_percent": sample_reduction_percent,
         }
 
-        row.update(ans_cov)
-        row.update(evt_ret)
+        if compute_gold_metrics:
+            row.update(compute_final_answer_coverage(item, branch))
+            row.update(compute_final_gold_event_retention(item, branch))
+
         rows.append(row)
 
     return pd.DataFrame(rows)
@@ -847,10 +788,6 @@ def build_metric_tables(df: pd.DataFrame, func: MetricFunc) -> Dict[str, pd.Data
     }
 
 
-# ============================================================
-# Print
-# ============================================================
-
 
 def print_table(
     title: str,
@@ -871,45 +808,13 @@ def run_unified_evaluation(
     dataset_name: Optional[str] = None,
     print_reports: bool = True,
 ) -> Dict[str, Any]:
-    """
-    Run the reduced SCoP evaluation in function-call mode.
-
-    Parameters
-    ----------
-    eval_source:
-        Either:
-          1. A file path to a JSON evaluation file;
-          2. A list[dict] already loaded in memory;
-          3. A single dict sample.
-
-    dataset_name:
-        Optional dataset name controlling the level-label schema:
-          - MultiTQ: read `qlabel`.
-          - Others: read `question_level`.
-
-    print_reports:
-        Whether to print the selected formatted tables to stdout.
-
-    Returns
-    -------
-    Dict[str, Any]
-        {
-            "details": pd.DataFrame,
-            "compression": {"by_level": ..., "by_qtype": ...},
-            "answer_coverage": {"by_level": ..., "by_qtype": ...},
-            "event_retention": {"by_level": ..., "by_qtype": ...},
-            "metadata": {...}
-        }
-    """
     
-    # if dataset_name == TemporalDatasets.MULTITQ.value:
-    #     print("The MultiTQ dataset does not support gold answer/events evaluation.")
+    if dataset_name not in TemporalDatasets._value2member_map_:
+        print(f"ERROR: not supported Dataset[{dataset_name}]")
+        return {}
 
-    print(f"dataset_name: {dataset_name}")
-    
-    if dataset_name == "MultiTQ":
-        print("The MultiTQ dataset does not support gold answer/events evaluation.")
-    
+    supports_gold_metrics = not is_multitq_dataset(dataset_name)
+
     if isinstance(eval_source, (str, Path)):
         data = load_json(eval_source)
         input_source_repr = str(eval_source)
@@ -927,24 +832,43 @@ def run_unified_evaluation(
     df = build_dataframe(
         data=data,
         dataset_name=dataset_name,
+        compute_gold_metrics=supports_gold_metrics,
     )
 
     if df.empty:
         raise ValueError("No samples available for evaluation.")
 
     comp_tables = build_metric_tables(df, summarize_compression)
-    ans_tables = build_metric_tables(df, summarize_answer_coverage)
-    evt_tables = build_metric_tables(df, summarize_event_retention)
+
+    ans_tables = (
+        build_metric_tables(df, summarize_answer_coverage)
+        if supports_gold_metrics
+        else None
+    )
+    evt_tables = (
+        build_metric_tables(df, summarize_event_retention)
+        if supports_gold_metrics
+        else None
+    )
 
     metadata = {
         "input_source": input_source_repr,
         "dataset_name": dataset_name,
         "normalized_dataset_name": normalize_text(dataset_name) if dataset_name else None,
         "is_multitq": is_multitq_dataset(dataset_name),
+        "gold_answer_event_metrics_supported": supports_gold_metrics,
         "num_samples": len(df),
         "compression_evaluable": int(df["compression_evaluable"].fillna(False).sum()),
-        "answer_coverage_evaluable": int(df["answer_evaluable"].fillna(False).sum()),
-        "event_retention_evaluable": int(df["event_evaluable"].fillna(False).sum()),
+        "answer_coverage_evaluable": (
+            int(df["answer_evaluable"].fillna(False).sum())
+            if supports_gold_metrics
+            else None
+        ),
+        "event_retention_evaluable": (
+            int(df["event_evaluable"].fillna(False).sum())
+            if supports_gold_metrics
+            else None
+        ),
     }
 
     if print_reports:
@@ -970,24 +894,25 @@ def run_unified_evaluation(
             comp_tables["by_qtype"],
             note=compression_note,
         )
-        print_table(
-            "Gold Answer Retention — By Level",
-            ans_tables["by_level"],
-            note=answer_coverage_note,
-        )
-        print_table(
-            "Gold Answer Retention — By Qtype",
-            ans_tables["by_qtype"],
-            note=answer_coverage_note,
-        )
-        print_table(
-            "Gold Event Retention — By Level",
-            evt_tables["by_level"],
-        )
-        print_table(
-            "Gold Event Retention — By Qtype",
-            evt_tables["by_qtype"],
-        )
+        if supports_gold_metrics:
+            print_table(
+                "Gold Answer Retention — By Level",
+                ans_tables["by_level"],
+                note=answer_coverage_note,
+            )
+            print_table(
+                "Gold Answer Retention — By Qtype",
+                ans_tables["by_qtype"],
+                note=answer_coverage_note,
+            )
+            print_table(
+                "Gold Event Retention — By Level",
+                evt_tables["by_level"],
+            )
+            print_table(
+                "Gold Event Retention — By Qtype",
+                evt_tables["by_qtype"],
+            )
 
     return {
         "details": df,
@@ -1012,10 +937,9 @@ def main() -> None:
     parser.add_argument(
         "--dataset-name",
         type=str,
-        default="MultiTQ",
+        default="TimelineCronQR",
         help=(
-            "Optional dataset name. MultiTQ uses qlabel as the level label; "
-            "other datasets use question_level."
+            "Optional dataset name."
         ),
     )
 

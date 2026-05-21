@@ -29,7 +29,7 @@ set +a
 
 # ================= Execution Parameters =================
 # MultiTQ or TimelineCronQR
-DATASET="${DATASET:-MultiTQ}"
+DATASET="${DATASET:-TimelineCronQR}"
 TEST_SIZE="${TEST_SIZE:-60000}"
 MAX_WORKERS="${MAX_WORKERS:-16}"
 MAX_TIMEOUTS="${MAX_TIMEOUTS:-20}"
