@@ -126,7 +126,7 @@ run_one() {
 
                 # Real-time capture of key metrics and run info to write into summary.
                 if echo "${line}" | grep -iE "====== run|│ Metric|│ Hit|metric|overall|multiple|single|entity|time" > /dev/null; then
-                    if ! echo "${line}" | grep -E "### Table|### 表格|>>>>>> FINAL" > /dev/null; then
+                    if ! echo "${line}" | grep -E "### Table|###|>>>>>> FINAL" > /dev/null; then
                         echo "${line}" >> "${SUMMARY_FILE}"
                     fi
                 fi

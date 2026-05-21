@@ -39,7 +39,7 @@ from src.constraint import (
 from src.eval.eval_multi import final_eval as multi_final_eval
 from src.eval.eval_corn import final_eval as corn_final_eval
 
-# ================= 自定义异常 =================
+
 
 
 class WorkerTimeoutError(Exception):
@@ -55,7 +55,7 @@ class PipelineAbortError(Exception):
     pass
 
 
-# ================= 通用工具 =================
+
 
 
 def ensure_stage(d: Dict[str, Any]) -> Dict[str, Any]:
@@ -425,7 +425,7 @@ def answer_worker(constrained_data):
         return new_data
 
     except openai.APITimeoutError:
-        logger.warning("问答生成阶段发生超时")
+        logger.warning("timedout when answer")
         new_data["predict_answer"] = None
         new_data["predict_thought"] = None
         new_data["answer_context"] = None
@@ -434,7 +434,7 @@ def answer_worker(constrained_data):
         raise WorkerTimeoutError(new_data)
 
     except Exception as e:
-        logger.warning(f"问答阶段发生异常: {e}", exc_info=True)
+        logger.warning(f"exception in answer: {e}", exc_info=True)
         new_data["predict_answer"] = None
         new_data["predict_thought"] = None
         new_data["answer_context"] = None
@@ -680,7 +680,6 @@ def no_constraint_worker(aligned_data, g, ent_index, rel_index, topk: int = 10):
         return new_data
 
 
-# ================= 数据清洗 =================
 
 
 def clean_final_data(new_data):
@@ -917,7 +916,7 @@ def run_once(
                 except WorkerTimeoutError as e:
                     timeout_count += 1
                     logger.error(
-                        f"[{desc}] timeout occurred! current累计: "
+                        f"[{desc}] timeout occurred! current: "
                         f"{timeout_count}/{max_timeouts}"
                     )
                     results[idx] = e.fallback_data
@@ -1040,7 +1039,7 @@ def run_once(
                     current_data = _run_parallel(
                         skip_align_worker,
                         current_data,
-                        "跳过对齐",
+                        "skip align",
                         checkpoint_dir=paths["align_ckpt_dir"],
                         shard_size=shard_size,
                     )
@@ -1119,7 +1118,7 @@ def run_once(
                 shutil.rmtree(paths["answer_ckpt_dir"])
 
     except PipelineAbortError as e:
-        logger.error(f"====== Run {run_id} 被强行终止：{e} ======")
+        logger.error(f"====== Run {run_id} stop：{e} ======")
         return
 
     if dataset_name == TemporalDatasets.MULTITQ.value:

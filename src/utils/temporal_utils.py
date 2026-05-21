@@ -316,7 +316,7 @@ def coarsen_range(
             "end": e,
         }
 
-    raise ValueError(f"不支持的 granularity: {granularity}")
+    raise ValueError(f"not support granularity: {granularity}")
 
 
 

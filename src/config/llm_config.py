@@ -5,7 +5,7 @@ from typing import Optional
 from threading import Lock
 from sentence_transformers import SentenceTransformer
 
-# 假设 BaseConfig 和 logger 已经导入
+
 from src.config.base_config import BaseConfig, logger
 
 
@@ -24,11 +24,11 @@ class LLMConfig(BaseConfig):
 
     def __init__(
         self,
-        # Chat 模型全局配置
+
         chat_model: Optional[str] = None,
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
-        # 共享与基础配置
+
         embed_model_path: Optional[str] = None,
         temperature: Optional[float] = None,
         timeout: Optional[int] = None,
@@ -47,7 +47,7 @@ class LLMConfig(BaseConfig):
 
             super().__init__(**kwargs)
 
-            # ---- 核心改造：统一单模型参数解析 ----
+
             self.CHAT_MODEL = chat_model or os.getenv("CHAT_MODEL")
             self.BASE_URL = base_url or os.getenv("OPENAI_BASE_URL")
             _api_key = api_key or os.getenv("OPENAI_API_KEY")

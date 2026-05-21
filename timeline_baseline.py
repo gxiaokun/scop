@@ -11,7 +11,7 @@ from tqdm.auto import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 from typing import Dict, Any, List, Set
-from openai.types.chat import ChatCompletionMessageParam  # 引入严格类型
+from openai.types.chat import ChatCompletionMessageParam
 
 import instructor
 from pydantic import BaseModel, Field

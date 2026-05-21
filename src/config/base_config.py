@@ -30,7 +30,7 @@ def _init_logger(level="INFO") -> logging.Logger:
         if _logger is None:
             logger = logging.getLogger("myapp")
 
-            # --- 核心拦截：如果没有任何 handler，才允许添加 ---
+   
             if not logger.handlers:
                 handler = logging.StreamHandler()
                 formatter = ColorFormatter(

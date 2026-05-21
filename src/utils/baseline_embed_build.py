@@ -25,10 +25,6 @@ def get_corpus_file() -> str:
     return f"{RAGConfig().MAIN_BASE_STORE_DIR}/CR_Baselines/corpus.pkl"
 
 
-# ==========================
-# 文本预处理
-# ==========================
-
 
 def clean_and_normalize(text: str) -> str:
     text = text.replace("_", " ")
@@ -61,7 +57,7 @@ class VectorDatabase:
         self.vectors: Optional[np.ndarray] = None
         self.dim: int = 0
 
-    # ---- 简单持久化 ----
+
     def save(self) -> None:
         if self.vectors is None or not self.corpus:
             logger.warning("no vectors or corpus to save.")

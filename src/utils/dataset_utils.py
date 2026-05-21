@@ -59,7 +59,7 @@ def build_igraph_from_txt(file_path: str) -> Tuple[ig.Graph, Dict[str, Dict[str,
     records = list(load_records_from_txt(file_path))  # (s, r, o, t1_str, t2_str)
     logger.info(f"Loaded {len(records):,} facts")
 
-    # ===== 词表收集 =====
+
     entities, relations = set(), set()
     start_times, end_times = set(), set()
     timestamps = set() 

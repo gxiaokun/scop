@@ -589,11 +589,11 @@ def load_data(
     resume: bool,
 ) -> List[Dict[str, Any]]:
     if resume and os.path.exists(checkpoint_path):
-        print(f"检测到 checkpoint，尝试从 {checkpoint_path} 恢复断点...")
+        print(f"checkpoint, resume from {checkpoint_path}...")
         with open(checkpoint_path, "r", encoding="utf-8") as file:
             return json.load(file)
 
-    print(f"从输入文件读取 {input_path}...")
+    print(f"Read from input file {input_path}...")
     with open(input_path, "r", encoding="utf-8") as file:
         data = json.load(file)
 
@@ -746,7 +746,6 @@ def parse_args() -> argparse.Namespace:
         ),
     )
 
-    # 新增：测试集抽样大小限制
     parser.add_argument(
         "--test-size",
         type=int,
@@ -894,13 +893,11 @@ def main() -> None:
         resume=args.resume,
     )
 
-    # ==========================================
-    # 新增：按级别比例分层抽样逻辑
-    # ==========================================
+
     if args.test_size is not None and args.test_size < len(data):
         target_size = args.test_size
         
-        # 1. 按 question_level 分组
+
         level_groups = defaultdict(list)
         for dp in data:
             lvl = str(dp.get("question_level", "unknown")).lower()
@@ -909,10 +906,9 @@ def main() -> None:
         sampled_dataset = []
         remaining_to_sample = target_size
         
-        # 2. 设定固定随机种子，保证多次运行抽取的样本一致
+
         random.seed(42) 
-        
-        # 3. 按组在总体中的比例分配名额
+
         allocations = {}
         for lvl, group in level_groups.items():
             alloc_size = int((len(group) / len(data)) * target_size)
@@ -922,12 +918,12 @@ def main() -> None:
             sampled_dataset.extend(random.sample(group, alloc_size))
             remaining_to_sample -= alloc_size
             
-        # 4. 补齐因向下取整导致的余额缺口
+   
         if remaining_to_sample > 0:
             remaining_pool = [dp for dp in data if dp not in sampled_dataset]
             sampled_dataset.extend(random.sample(remaining_pool, min(remaining_to_sample, len(remaining_pool))))
             
-        # 5. 打乱顺序
+
         random.shuffle(sampled_dataset)
         data = sampled_dataset
         
@@ -957,9 +953,9 @@ def main() -> None:
                 )
             )
 
-        print(f"总计样本数: {len(data)}")
-        print(f"跳过已处理: {skipped_count}")
-        print(f"待处理样本: {len(futures)}\n")
+        print(f"all samples num: {len(data)}")
+        print(f"skip processed num: {skipped_count}")
+        print(f"pending num: {len(futures)}\n")
 
         with tqdm(
             total=len(futures),
@@ -1034,11 +1030,10 @@ def main() -> None:
 
     atomic_save_json(args.output, clean_data)
 
-    print("\n完成。")
-    print(f"输出文件: {args.output}")
+    print("\Done")
+    print(f"output file: {args.output}")
     print(f"checkpoint: {checkpoint_path}")
     print(
-        "本次运行 -> "
         f"success: {success_count}, "
         f"fail: {fail_count}, "
         f"skipped: {skipped_count}"

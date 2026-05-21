@@ -1225,7 +1225,7 @@ def project_candidate(c: Candidate, projection: str, answer_type: str) -> List[s
             return [c.start]
         if answer_type == "timestamp_end":
             return [c.end]
-        #!0514改成具体日期
+
         if answer_type in {"timestamp_range"}:
         # if answer_type in {"timestamp_range", "duration"}:
             return [f"{c.start} to {c.end}"]
@@ -1620,7 +1620,7 @@ def source_event_answer_from_event(e: Event, answer_type: str) -> List[str]:
         return [e.start]
     if answer_type == "timestamp_end":
         return [e.end]
-    #!0514改成具体日期
+
     if answer_type in {"timestamp_range"}:
     # if answer_type in {"timestamp_range", "duration"}:
         return [f"{e.start} to {e.end}"]
@@ -1660,7 +1660,7 @@ def answer_operator_from_events(case: Dict[str, Any], events: List[Event], opera
     if operator == "duration":
         # In this dataset plain duration is interval, not N days.
         # return [interval_str_from_event(e) for e in sorted(events, key=_event_sort_key)], debug
-        #!0514改成具体日期
+
         ordered_events = sorted(events, key=_event_sort_key)
         return [
             format_duration_answer(e.start, e.end)
@@ -2214,14 +2214,14 @@ def repair_dataset(
         )
         return idx, repaired_case
 
-    # 只维持有限数量的 pending futures
+
     max_pending = max(workers * 4, workers)
 
     data_iter = iter(enumerate(data))
     pending = set()
 
     with ThreadPoolExecutor(max_workers=workers) as ex:
-        # 初始提交
+
         for _ in range(min(max_pending, total)):
             idx, case = next(data_iter)
             pending.add(ex.submit(_worker, idx, case))
@@ -2252,7 +2252,6 @@ def repair_dataset(
                 if progress is not None:
                     progress.update(1)
 
-                # 每完成一个，再补交一个
                 try:
                     next_idx, next_case = next(data_iter)
                     pending.add(ex.submit(_worker, next_idx, next_case))
@@ -2654,7 +2653,7 @@ def summarize_repair_by_question_level(
 
     return final_result
 
-#?0514新增 把duration的simple问题，全都改成 xxxdays
+
 def normalize_simple_duration_original_answer(
     case: Dict[str, Any],
 ) -> Dict[str, Any]:
@@ -2681,8 +2680,7 @@ def normalize_simple_duration_original_answer(
     if not events:
         return case
 
-    # simple timeline 一般应只有一个核心 event；
-    # 若你的 repair 后允许多 event，这里会为每个 event 生成 duration，并去重。
+
     normalized_answer: List[str] = []
     for e in events:
         normalized_answer.append(
@@ -2693,7 +2691,7 @@ def normalize_simple_duration_original_answer(
 
     out = dict(case)
 
-    # 只在确实发生变化时备份旧 answer
+
     old_answer = normalize_answer_values(case.get("answer", []))
     if old_answer != normalized_answer:
         out["original_answer_before_duration_normalization"] = old_answer
