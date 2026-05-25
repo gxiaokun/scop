@@ -2,7 +2,15 @@
 
 This README describes the reconstruction workflow used to produce the cleaned **TimelineCronQ-R** benchmark for the SCoP experiments.
 
-The reconstruction preserves the underlying temporal knowledge graph and focuses on repairing and standardizing the QA annotation layer, including question text, answer consistency, supporting-event consistency, duplicate handling, filtering, balancing, and final dataset splitting.
+The reconstruction pipeline corresponds to the TimelineCronQ-R benchmark preparation described in the SCoP paper. It preserves the underlying temporal knowledge graph and focuses on repairing and standardizing the QA annotation layer, including question text, answer consistency, supporting-event consistency, duplicate handling, filtering, balancing, and final dataset splitting. The core principles of our reconstruction are:
+
+- the underlying temporal KG is kept unchanged;
+- the QA annotation layer is conservatively repaired;
+- answer sets, supporting events, duplicate handling, answer formatting, targeted relabeling, and final splits are made deterministic and auditable;
+- a new `qtype` field is introduced, deterministically mapped from the existing `temporal_relation`, to provide a cleaner taxonomy for temporal reasoning paradigms;
+- the original question is preserved intact within the dataset, alongside a `qa_repair_thought` trace that records the LLM's reasoning during the rewriting process;
+- the reconstructed questions are further validated through manual inspection on stratified samples.
+
 
 ---
 
@@ -187,16 +195,23 @@ This stage performs:
     - `question_level`
     - `question_type`
 
-Outputs:
 
-```text
-final_data/
-├── step3_leakage_cleaned.final_all.json
-├── step3_leakage_cleaned.final_format_report.json
-├── train.json
-├── validation.json
-└── test.json
-```
+#### New QType Assignment
+
+All original dataset labels are preserved without modification. However, to better categorize the temporal reasoning requirements, we introduce a new `qtype` field. This field is deterministically derived from the existing `temporal_relation` according to the following mapping rules:
+
+| `temporal_relation` Pattern / Value | Assigned `qtype` |
+| --- | --- |
+| `timeline`, `rank_start_time`, `rank_end_time` | `timeline_structure` |
+| `union`, `intersection`, `sum`, `average` | `temporal_operation` |
+| `duration_before`, `duration_after`, `duration_during` | `relative_temporal` |
+| <code>duration_&lt;N&gt;\s+days\s+(before&#124;after)</code> | `quantitative_temporal` |
+| Any `&`-separated component matching interval-topology relations such as `x d y`, `x di y`, `x o y`, or `x oi y` | `interval_relation` |
+| All `&`-separated components are pure ordering relations, i.e., `x < y` or `x > y` | `temporal_order` |
+
+
+
+This mapping provides a cleaner, structured taxonomy for analyzing model performance across different temporal reasoning paradigms during the SCoP evaluation.
 
 #### Targeted Complex-to-Medium Relabeling
 
@@ -229,6 +244,18 @@ A representative example is:
 ```
 
 The question text and answer depend on the union of the two explicitly mentioned event intervals. Such records are therefore relabeled as `medium` before level balancing and final resplitting.
+
+Outputs:
+
+```text
+final_data/
+├── step3_leakage_cleaned.final_all.json
+├── step3_leakage_cleaned.final_format_report.json
+├── train.json
+├── validation.json
+└── test.json
+```
+
 
 #### Step 4 Report Summary
 
@@ -292,17 +319,7 @@ This stage changes surface presentation, not the temporal program, split assignm
 
 #### Manual Quality Check after Step 5
 
-To further validate the effect of the constrained surface-form rewriting stage, we manually audited a stratified sample of 200 reconstructed QA instances across question levels. The audit checked whether the rewritten question preserved the original temporal intent, answer target, supporting events, temporal relation, and gold answer consistency.
+To further validate the effect of the constrained surface-form rewriting stage, we conducted a stratified manual audit, sampling 300 reconstructed QA instances from each difficulty level. The audit checked whether the rewritten question preserved the original temporal intent, answer target, supporting events, temporal relation, and gold answer consistency.
 
 In the audited sample, we did not observe cases where the rewriting changed the underlying QA semantics, altered the temporal reasoning requirement, or introduced inconsistencies between the question, answer, and supporting events.
 
----
-
-## 5. Relation to the Paper
-
-This reconstruction pipeline corresponds to the TimelineCronQ-R benchmark preparation described in the SCoP paper:
-
-- the underlying temporal KG is kept unchanged;
-- the QA annotation layer is conservatively repaired;
-- answer sets, supporting events, duplicate handling, answer formatting, targeted relabeling, and final splits are made deterministic and auditable;
-- the final benchmark is used for the TimelineCronQ-R experiments reported in the paper.
