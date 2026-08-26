@@ -1,6 +1,6 @@
 # SCoP
 
-
+> 🎉 Our paper has been accepted by CIKM 2026!
 
 **SCoP: Structured Constraint Parsing for Evidence-Space Control in Temporal Knowledge Graph Question Answering**
 
@@ -13,13 +13,12 @@ Supported datasets:
 - `MultiTQ`
 - `TimelineCronQR` in code, corresponding to **TimelineCronQ-R** in the paper
 
-
 > **TimelineCronQ-R Reconstruction Detail and Summary**： [TimelineCronQ-R Reconstruction](./TimelineCronQ-R_repair_code/README.md)
-
 
 ## Environment Setup
 
 We recommend the following environment:
+
 - Python 3.11
 - Pytorch 2.6.0+cu124
 - CUDA 12.4
@@ -29,7 +28,6 @@ conda create -n scop python=3.11 -y
 conda activate scop
 pip install -r requirements.txt
 ```
-
 
 ## 1. Repository Structure
 
@@ -50,23 +48,19 @@ SCoP/
     └── config/
 ```
 
-
-| Path | Description |
-|---|---|
-| `scop_main.py` | Main entry point for SCoP |
-| `timeline_baseline.py` | Entry point for TimelineCronQ-R baseline experiments |
-| `run_scop.sh` | Shell script for running SCoP and ablation experiments |
-| `run_timeline_baselines.sh` | Shell script for TimelineCronQ-R baseline experiments |
-| `src/scop.py` | Main SCoP pipeline |
-| `src/constraint.py` | Temporal constraint parsing and execution |
-| `src/co_retriver.py` | Triple retrieval, alignment-related orchestration, and evidence preparation |
-| `src/llm/` | LLM prompts, few-shots and structured parsing modules |
-| `src/eval/` | Evaluation scripts for Hits@k and evidence-space analysis |
-| `src/utils/` | Graph construction, FAISS indexing, and utility functions |
-| `src/config/` | Configuration loading and model/runtime settings |
-
-
-
+| Path                          | Description                                                                 |
+| ----------------------------- | --------------------------------------------------------------------------- |
+| `scop_main.py`              | Main entry point for SCoP                                                   |
+| `timeline_baseline.py`      | Entry point for TimelineCronQ-R baseline experiments                        |
+| `run_scop.sh`               | Shell script for running SCoP and ablation experiments                      |
+| `run_timeline_baselines.sh` | Shell script for TimelineCronQ-R baseline experiments                       |
+| `src/scop.py`               | Main SCoP pipeline                                                          |
+| `src/constraint.py`         | Temporal constraint parsing and execution                                   |
+| `src/co_retriver.py`        | Triple retrieval, alignment-related orchestration, and evidence preparation |
+| `src/llm/`                  | LLM prompts, few-shots and structured parsing modules                       |
+| `src/eval/`                 | Evaluation scripts for Hits@k and evidence-space analysis                   |
+| `src/utils/`                | Graph construction, FAISS indexing, and utility functions                   |
+| `src/config/`               | Configuration loading and model/runtime settings                            |
 
 ## 2. Environment Setup
 
@@ -243,5 +237,3 @@ EXPERIMENT_OUTPUT_DIR/corn_baseline/
 ```
 
 Evaluation is triggered automatically after SCoP runs. The code reports Hits@1 / Hits@10 and also performs evidence-space analysis from constrained outputs.
-
-
