@@ -1,16 +1,17 @@
 # TimelineCronQ-R Reconstruction
 
-This README describes the reconstruction workflow used to produce the cleaned **TimelineCronQ-R** benchmark for the SCoP experiments.
+This README documents how we reconstructed the cleaned **TimelineCronQ-R** benchmark used in the SCoP experiments.
 
-The reconstruction pipeline corresponds to the TimelineCronQ-R benchmark preparation described in the SCoP paper. It preserves the underlying temporal knowledge graph and focuses on repairing and standardizing the QA annotation layer, including question text, answer consistency, supporting-event consistency, duplicate handling, filtering, balancing, and final dataset splitting. The core principles of our reconstruction are:
+The pipeline follows the benchmark-preparation procedure described in the SCoP paper.
+It leaves the underlying temporal knowledge graph unchanged and repairs only the QA annotation layer, including question text, answer and supporting-event consistency, duplicates, filtering, balancing, and the final split.
+The reconstruction follows these principles:
 
 - the underlying temporal KG is kept unchanged;
 - the QA annotation layer is conservatively repaired;
-- answer sets, supporting events, duplicate handling, answer formatting, targeted relabeling, and final splits are made deterministic and auditable;
-- a new `qtype` field is introduced, deterministically mapped from the existing `temporal_relation`, to provide a cleaner taxonomy for temporal reasoning paradigms;
-- the original question is preserved intact within the dataset, alongside a `qa_repair_thought` trace that records the LLM's reasoning during the rewriting process;
-- the reconstructed questions are further validated through manual inspection on stratified samples.
-
+- answer sets, supporting events, duplicate handling, answer formatting, targeted relabeling, and final splits are deterministic and auditable;
+- `qtype` is derived deterministically from the existing `temporal_relation` to provide a clearer taxonomy of temporal reasoning patterns;
+- the dataset retains the original question together with a `qa_repair_thought` trace from the LLM rewriting stage;
+- stratified manual checks were used to validate the rewritten questions.
 
 ---
 
@@ -30,8 +31,8 @@ TimelineCronQ-R_repair_code/
 unified_kg_cron_questions_all.json
 ```
 
-This file is the union/raw QA collection used as the starting point of the reconstruction pipeline.  
-It has already undergone an initial answer-format normalization step before entering the reconstruction workflow documented here.
+This union of raw QA records is the starting point for the reconstruction pipeline.
+It has already received an initial answer-format normalization pass.
 
 ### 1.2 Temporal KG Graph
 
@@ -39,7 +40,8 @@ It has already undergone an initial answer-format normalization step before ente
 TimelineCronQ.pkl
 ```
 
-This igraph-based temporal KG is constructed from the original event quadruples released with TimelineTKGQA and is used by the deterministic gold-repair stage for KG-backed semantic execution and verification.
+This igraph-based temporal KG is built from the original event quadruples released with TimelineTKGQA.
+The deterministic gold-repair stage uses it for KG-backed semantic execution and verification.
 
 ---
 
@@ -59,18 +61,18 @@ TimelineCronQ-R_repair_code/
 
 ### File Roles
 
-| File | Purpose |
-| --- | --- |
-| `repair.sh` | Main reconstruction launcher for Steps 1–5 |
-| `1_repair_duration.py` | Repairs known malformed duration-question templates under deterministic validity checks |
-| `2_repair_timeline_gold.py` | Deterministic gold-answer and gold-event repair with KG-backed semantic verification |
-| `3_repair_leakage.py` | Removes duplicate-question leakage and merges duplicated simple cases |
-| `4_final_format.py` | Final formatting, filtering, relabeling, balancing, qtype assignment, and 8:1:1 resplitting |
-| `5_repair_question.py` | LLM-based surface-form rewriting of questions and constrained answer-format polishing |
+| File                          | Purpose                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------- |
+| `repair.sh`                 | Main reconstruction launcher for Steps 1–5                                                 |
+| `1_repair_duration.py`      | Repairs known malformed duration-question templates under deterministic validity checks     |
+| `2_repair_timeline_gold.py` | Deterministic gold-answer and gold-event repair with KG-backed semantic verification        |
+| `3_repair_leakage.py`       | Removes duplicate-question leakage and merges duplicated simple cases                       |
+| `4_final_format.py`         | Final formatting, filtering, relabeling, balancing, qtype assignment, and 8:1:1 resplitting |
+| `5_repair_question.py`      | LLM-based surface-form rewriting of questions and constrained answer-format polishing       |
 
 ---
 
-## 3. Reconstruction Pipeline
+## Reconstruction Pipeline
 
 Run the full reconstruction pipeline with:
 
@@ -78,7 +80,7 @@ Run the full reconstruction pipeline with:
 bash repair.sh
 ```
 
-The pipeline contains five stages:
+The reconstruction has five stages:
 
 1. repair malformed duration-question templates;
 2. perform deterministic gold repair and consistency filtering;
@@ -86,7 +88,8 @@ The pipeline contains five stages:
 4. apply final formatting, targeted relabeling, balancing, and resplitting;
 5. apply constrained LLM-based surface-form rewriting of questions.
 
-Steps 1–4 implement deterministic repair and dataset restructuring. Step 5 is a controlled language-polishing stage that rewrites surface forms while preserving the underlying QA semantics.
+Steps 1–4 repair and restructure the dataset deterministically.
+Step 5 only polishes question wording and preserves the underlying QA semantics.
 
 ---
 
@@ -94,27 +97,27 @@ Steps 1–4 implement deterministic repair and dataset restructuring. Step 5 is 
 
 ### Step 1. Duration-Question Text Repair
 
-Purpose:
+This step:
 
 - repairs known malformed duration-related question templates;
 - validates offset consistency before rewriting a question;
 - modifies only the `question` field;
 - does **not** modify answers, events, labels, or temporal relations.
 
-The implemented fixes target malformed duration phrasing such as missing `before` / `after` connectors and a small set of malformed subject-prefix templates.
+The fixes cover malformed duration phrasing, including missing `before` / `after` connectors and a small number of malformed subject-prefix templates.
 
 ---
 
 ### Step 2. Deterministic Gold Repair and Semantic Verification
 
-Core design:
+This step:
 
 - uses `events` as canonical event facts;
 - uses `temporal_relation` as a hard temporal program;
 - uses `answer_type` to determine answer projection;
 - executes KG-backed semantic verification over `TimelineCronQ.pkl` when resolvable.
 
-Per record, the script derives repair metadata including:
+For each record, the script writes repair metadata including:
 
 - `source_event_gold`;
 - `semantic_gold`;
@@ -122,7 +125,7 @@ Per record, the script derives repair metadata including:
 - program type;
 - diagnostic notes.
 
-The cleaning policy reported by the script is:
+The retained-clean policy is:
 
 - keep `ORIGINAL_EXACT`;
 - keep `ORIGINAL_SUBSET_OF_REPAIRED` when the semantic gold size is at most 10;
@@ -131,23 +134,23 @@ The cleaning policy reported by the script is:
 
 #### Step 2 Report Summary
 
-| Quantity | Count |
-| --- | ---: |
-| Input QA records | 39,216 |
+| Quantity               |  Count |
+| ---------------------- | -----: |
+| Input QA records       | 39,216 |
 | Retained clean records | 24,391 |
 
-Execution mode:
+Semantic-execution coverage:
 
-| Mode | Count |
-| --- | ---: |
-| KG-backed exact semantic execution | 33,039 |
-| Source-event operator semantics preserved | 4,014 |
+| Mode                                      |  Count |
+| ----------------------------------------- | -----: |
+| KG-backed exact semantic execution        | 33,039 |
+| Source-event operator semantics preserved |  4,014 |
 
 ---
 
 ### Step 3. Duplicate-Question Cleaning
 
-Cleaning policy:
+This step uses the following policy:
 
 - duplicate key = exact stripped `question` string;
 - duplicated `medium` / `complex` questions are removed;
@@ -158,29 +161,29 @@ Cleaning policy:
 
 #### Step 3 Report Summary
 
-| Quantity | Count |
-| --- | ---: |
-| Input records | 24,391 |
-| Duplicate question groups | 1,904 |
-| Records inside duplicate groups | 4,021 |
-| Final records | 22,272 |
-| Net removed records | 2,119 |
-| Remaining duplicate groups after cleaning | 0 |
+| Quantity                                  |  Count |
+| ----------------------------------------- | -----: |
+| Input records                             | 24,391 |
+| Duplicate question groups                 |  1,904 |
+| Records inside duplicate groups           |  4,021 |
+| Final records                             | 22,272 |
+| Net removed records                       |  2,119 |
+| Remaining duplicate groups after cleaning |      0 |
 
 Simple-case merging:
 
-| Quantity | Count |
-| --- | ---: |
-| Simple merge groups | 1,902 |
-| Merged simple input records | 4,017 |
-| Merged simple output records | 1,902 |
+| Quantity                        | Count |
+| ------------------------------- | ----: |
+| Simple merge groups             | 1,902 |
+| Merged simple input records     | 4,017 |
+| Merged simple output records    | 1,902 |
 | Simple records removed by merge | 2,115 |
 
 ---
 
 ### Step 4. Final Formatting, Relabeling, Balancing, and Resplitting
 
-This stage performs:
+This stage:
 
 1. answer normalization;
 2. invalid-answer removal;
@@ -195,27 +198,26 @@ This stage performs:
     - `question_level`
     - `question_type`
 
-
 #### New QType Assignment
 
-All original dataset labels are preserved without modification. However, to better categorize the temporal reasoning requirements, we introduce a new `qtype` field. This field is deterministically derived from the existing `temporal_relation` according to the following mapping rules:
+All original dataset labels are preserved.
+To make temporal reasoning patterns easier to analyze, the pipeline adds a `qtype` field derived deterministically from `temporal_relation`:
 
-| `temporal_relation` Pattern / Value | Assigned `qtype` |
+| `temporal_relation` pattern or value | Assigned `qtype` |
 | --- | --- |
 | `timeline`, `rank_start_time`, `rank_end_time` | `timeline_structure` |
 | `union`, `intersection`, `sum`, `average` | `temporal_operation` |
 | `duration_before`, `duration_after`, `duration_during` | `relative_temporal` |
 | <code>duration_&lt;N&gt;\s+days\s+(before&#124;after)</code> | `quantitative_temporal` |
-| Any `&`-separated component matching interval-topology relations such as `x d y`, `x di y`, `x o y`, or `x oi y` | `interval_relation` |
-| All `&`-separated components are pure ordering relations, i.e., `x < y` or `x > y` | `temporal_order` |
+| Any `&`-separated component matches an interval-topology relation such as `x d y`, `x di y`, `x o y`, or `x oi y` | `interval_relation` |
+| All `&`-separated components are pure ordering relations, namely `x < y` or `x > y` | `temporal_order` |
 
-
-
-This mapping provides a cleaner, structured taxonomy for analyzing model performance across different temporal reasoning paradigms during the SCoP evaluation.
+This mapping provides a compact taxonomy for analyzing model performance across temporal reasoning patterns in SCoP.
 
 #### Targeted Complex-to-Medium Relabeling
 
-A predefined deterministic relabeling rule is applied to a narrow metadata-defined subtype. A record is reassigned from `complex` to `medium` only when all of the following conditions hold:
+A predefined deterministic rule relabels one narrow metadata-defined subtype.
+A record changes from `complex` to `medium` only when all of the following conditions hold:
 
 ```text
 question_level    == "complex"
@@ -224,7 +226,8 @@ answer_type       == "relation_union_or_intersection"
 temporal_relation == "union"
 ```
 
-This rule addresses a template family whose original metadata may overstate the effective reasoning complexity. In these cases, the stored record can carry a three-event template label, while the actual natural-language question and gold answer are centered on the union of two explicitly queried event intervals.
+This rule covers a template family whose original metadata can overstate its effective reasoning complexity.
+Although the stored record may have a three-event template label, the question and gold answer concern the union of two explicitly queried event intervals.
 
 A representative example is:
 
@@ -243,7 +246,8 @@ A representative example is:
 }
 ```
 
-The question text and answer depend on the union of the two explicitly mentioned event intervals. Such records are therefore relabeled as `medium` before level balancing and final resplitting.
+The question and answer depend on the union of the two explicitly mentioned event intervals.
+These records are therefore relabeled as `medium` before balancing and resplitting.
 
 Outputs:
 
@@ -256,70 +260,63 @@ final_data/
 └── test.json
 ```
 
-
 #### Step 4 Report Summary
 
 Initial Step 4 input:
 
-| Quantity | Count |
-| --- | ---: |
+| Quantity                          |  Count |
+| --------------------------------- | -----: |
 | Records entering final formatting | 22,272 |
 
 Cleaning-stage statistics:
 
-| Statistic | Count |
-| --- | ---: |
-| Invalid-answer records dropped | 347 |
-| Event lists reordered | 7,470 |
-| Answers reordered by event-field order | 314 |
-| Complex-to-medium relabeling | 1,646 |
+| Statistic                              | Count |
+| -------------------------------------- | ----: |
+| Invalid-answer records dropped         |   347 |
+| Event lists reordered                  | 7,470 |
+| Answers reordered by event-field order |   314 |
+| Complex-to-medium relabeling           | 1,646 |
 
 After cleaning but before level balancing:
 
-| Level | Count |
-| --- | ---: |
-| Simple | 6,933 |
-| Medium | 7,445 |
-| Complex | 7,547 |
-| Total | 21,925 |
+| Level   |  Count |
+| ------- | -----: |
+| Simple  |  6,933 |
+| Medium  |  7,445 |
+| Complex |  7,547 |
+| Total   | 21,925 |
 
 After level balancing:
 
-| Level | Count |
-| --- | ---: |
-| Simple | 6,933 |
-| Medium | 6,933 |
-| Complex | 6,933 |
-| Total | 20,799 |
+| Level   |  Count |
+| ------- | -----: |
+| Simple  |  6,933 |
+| Medium  |  6,933 |
+| Complex |  6,933 |
+| Total   | 20,799 |
 
 Final split sizes:
 
-| Split | Count |
-| --- | ---: |
-| Train | 16,639 |
-| Validation | 2,080 |
-| Test | 2,080 |
+| Split      |  Count |
+| ---------- | -----: |
+| Train      | 16,639 |
+| Validation |  2,080 |
+| Test       |  2,080 |
 
-These are the final reconstructed benchmark sizes used for TimelineCronQ-R.
+These are the final TimelineCronQ-R splits used in the experiments.
 
 ---
 
 ### Step 5. LLM-Based Surface-Form Rewriting
 
-The final stage performs constrained natural-language polishing on the finalized train / validation / test splits.
+The final stage applies constrained natural-language polishing to the finalized train, validation, and test splits.
 
-Its purpose is to:
+It is intended to:
 
 - rewrite malformed or template-like questions into more natural phrasing;
 - preserve the original task semantics;
 - preserve temporal operators and answer slots;
 - repair answer temporal formatting only when an explicit correction is required.
 
-This stage changes surface presentation, not the temporal program, split assignment, or benchmark composition determined by Steps 1–4.
-
-#### Manual Quality Check after Step 5
-
-To further validate the effect of the constrained surface-form rewriting stage, we conducted a stratified manual audit, sampling 300 reconstructed QA instances from each difficulty level. The audit checked whether the rewritten question preserved the original temporal intent, answer target, supporting events, temporal relation, and gold answer consistency.
-
-In the audited sample, we did not observe cases where the rewriting changed the underlying QA semantics, altered the temporal reasoning requirement, or introduced inconsistencies between the question, answer, and supporting events.
-
+This stage changes only surface wording.
+It does not change the temporal program, split assignment, or benchmark composition established in Steps 1–4.

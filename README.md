@@ -4,7 +4,8 @@
 
 **SCoP: Structured Constraint Parsing for Evidence-Space Control in Temporal Knowledge Graph Question Answering**
 
-This repository contains the implementation used in the SCoP paper. SCoP answers temporal knowledge graph questions by constructing a structurally and temporally admissible evidence space before final answer generation.
+This repository contains the code for the SCoP paper.
+SCoP narrows the evidence space for temporal knowledge graph question answering before generating an answer, using both structural and temporal constraints.
 
 ![SCoP Architecture](Framework.png)
 
@@ -13,14 +14,14 @@ Supported datasets:
 - `MultiTQ`
 - `TimelineCronQR` in code, corresponding to **TimelineCronQ-R** in the paper
 
-> **TimelineCronQ-R Reconstruction Detail and Summary**： [TimelineCronQ-R Reconstruction](./TimelineCronQ-R_repair_code/README.md)
+For details of the reconstructed TimelineCronQ-R benchmark, see [TimelineCronQ-R Reconstruction](./TimelineCronQ-R_repair_code/README.md).
 
 ## Environment Setup
 
 We recommend the following environment:
 
 - Python 3.11
-- Pytorch 2.6.0+cu124
+- PyTorch 2.6.0+cu124
 - CUDA 12.4
 
 ```bash
@@ -29,7 +30,7 @@ conda activate scop
 pip install -r requirements.txt
 ```
 
-## 1. Repository Structure
+## Repository Structure
 
 ```text
 SCoP/
@@ -50,19 +51,19 @@ SCoP/
 
 | Path                          | Description                                                                 |
 | ----------------------------- | --------------------------------------------------------------------------- |
-| `scop_main.py`              | Main entry point for SCoP                                                   |
+| `scop_main.py`              | Entry point for SCoP experiments                                            |
 | `timeline_baseline.py`      | Entry point for TimelineCronQ-R baseline experiments                        |
-| `run_scop.sh`               | Shell script for running SCoP and ablation experiments                      |
-| `run_timeline_baselines.sh` | Shell script for TimelineCronQ-R baseline experiments                       |
-| `src/scop.py`               | Main SCoP pipeline                                                          |
-| `src/constraint.py`         | Temporal constraint parsing and execution                                   |
-| `src/co_retriver.py`        | Triple retrieval, alignment-related orchestration, and evidence preparation |
-| `src/llm/`                  | LLM prompts, few-shots and structured parsing modules                       |
-| `src/eval/`                 | Evaluation scripts for Hits@k and evidence-space analysis                   |
-| `src/utils/`                | Graph construction, FAISS indexing, and utility functions                   |
-| `src/config/`               | Configuration loading and model/runtime settings                            |
+| `run_scop.sh`               | Runs SCoP and its ablations                                                 |
+| `run_timeline_baselines.sh` | Runs the TimelineCronQ-R baselines                                          |
+| `src/scop.py`               | SCoP pipeline                                                               |
+| `src/constraint.py`         | Parses and applies temporal constraints                                     |
+| `src/co_retriver.py`        | Retrieves triples, coordinates alignment, and prepares evidence             |
+| `src/llm/`                  | Prompts, few-shot examples, and structured-parsing modules                  |
+| `src/eval/`                 | Hits@k evaluation and evidence-space analysis                               |
+| `src/utils/`                | Graph construction, FAISS indexing, and shared utilities                    |
+| `src/config/`               | Configuration loading and runtime settings                                  |
 
-## 2. Environment Setup
+## Configuration
 
 Runtime settings are read from `config.env`:
 
@@ -84,12 +85,12 @@ BASE_STORE_DIR=./data/build_store
 EXPERIMENT_OUTPUT_DIR=./test_run_results
 ```
 
-Required items are the chat model endpoint, API key, local embedding model path, dataset directory, artifact directory, and output directory.
-The embedding model is loaded with `local_files_only=True`; therefore `EMBED_MODEL_PATH` must point to a locally available SentenceTransformer-compatible model.
+Set the chat-model endpoint and API key, the local embedding-model path, and the dataset, artifact, and output directories before running an experiment.
+The embedding model is loaded with `local_files_only=True`, so `EMBED_MODEL_PATH` must point to a locally available SentenceTransformer-compatible model.
 
 ---
 
-## 3. Dataset Layout
+## Dataset Layout
 
 ```text
 DATASET_DIR/
@@ -115,7 +116,7 @@ subject<TAB>relation<TAB>object<TAB>start_time<TAB>end_time
 
 ---
 
-## 4. Script Examples
+## Running SCoP
 
 ### MultiTQ
 
@@ -135,7 +136,7 @@ ABLATION_TYPES="full" \
 bash run_scop.sh
 ```
 
-The first run automatically builds the temporal graph and FAISS retrieval artifacts under:
+On the first run, SCoP builds the temporal graph and FAISS retrieval artifacts under:
 
 ```text
 BASE_STORE_DIR/<DATASET>/
@@ -143,9 +144,9 @@ BASE_STORE_DIR/<DATASET>/
 
 ---
 
-## 5. Ablation Studies
+## Ablation Studies
 
-Supported ablation modes:
+The following ablation modes are available:
 
 ```text
 full
@@ -174,9 +175,9 @@ bash run_scop.sh
 
 ---
 
-## 6. TimelineCronQR Baselines
+## TimelineCronQR Baselines
 
-The controlled baseline setting in the paper uses:
+The paper uses the following controlled baseline setting:
 
 - final evidence budget: `20`
 - pre-filter retrieval budget: `50`
@@ -205,7 +206,7 @@ ircot
 ircot_filter
 ```
 
-To run only selected baselines:
+To run a subset of baselines:
 
 ```bash
 MODE_LIST="rag rag_filter react react_filter" bash run_timeline_baselines.sh
@@ -213,7 +214,7 @@ MODE_LIST="rag rag_filter react react_filter" bash run_timeline_baselines.sh
 
 ---
 
-## 7. Outputs and Paper-Result Mapping
+## Outputs and Paper Results
 
 SCoP outputs are written to:
 
@@ -221,7 +222,7 @@ SCoP outputs are written to:
 EXPERIMENT_OUTPUT_DIR/ablation/<DATASET>/<MODEL>/<ABLATION_TYPE>/test_<N>/run_<ID>/
 ```
 
-Key files include:
+The following files are particularly useful when inspecting a run:
 
 ```text
 q_decomposed.json
@@ -236,4 +237,5 @@ Baseline outputs are written to:
 EXPERIMENT_OUTPUT_DIR/corn_baseline/
 ```
 
-Evaluation is triggered automatically after SCoP runs. The code reports Hits@1 / Hits@10 and also performs evidence-space analysis from constrained outputs.
+Evaluation runs automatically after SCoP finishes.
+The reported metrics include Hits@1 and Hits@10, together with an evidence-space analysis based on the constrained outputs.
